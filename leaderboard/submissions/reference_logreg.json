@@ -1,0 +1,126 @@
+{
+  "benchmark": "CanFraudBench",
+  "schema_version": "0.1",
+  "submission": {
+    "model": "reference_logreg_stdlib",
+    "track": "A_synthetic_identity",
+    "data_file": "canfraudbench_synthid_n20000_seed23.jsonl",
+    "n_test": 6000
+  },
+  "metrics": {
+    "auc": 0.9693678042827166,
+    "ks": 0.9013599088412755,
+    "brier": 0.036423605310880146,
+    "ece": 0.0012344728274480401,
+    "psi": 0.0005311277882247684,
+    "explanation_coverage": 1.0,
+    "adverse_impact_ratio": 0.5927103718199608,
+    "demographic_parity_gap": 0.13044026061399522,
+    "equal_opportunity_gap": 0.06215469613259672,
+    "recall_by_typology": {
+      "inconsistent": 0.9483,
+      "fabricated": 0.9847,
+      "linked_cluster": 0.8135,
+      "blended": 1.0,
+      "legitimate": null,
+      "file_aged": 1.0
+    }
+  },
+  "e23_assessment": {
+    "discrimination": {
+      "status": "PASS",
+      "values": {
+        "auc": 0.9693678042827166,
+        "ks": 0.9013599088412755
+      }
+    },
+    "calibration": {
+      "status": "PASS",
+      "values": {
+        "brier": 0.036423605310880146,
+        "ece": 0.0012344728274480401
+      }
+    },
+    "stability": {
+      "status": "PASS",
+      "values": {
+        "psi": 0.0005311277882247684
+      }
+    },
+    "fairness": {
+      "status": "FAIL",
+      "values": {
+        "adverse_impact_ratio": 0.5927103718199608,
+        "equal_opportunity_gap": 0.06215469613259672,
+        "demographic_parity_gap": 0.13044026061399522
+      }
+    },
+    "explainability": {
+      "status": "PASS",
+      "values": {
+        "explanation_coverage": 1.0
+      }
+    }
+  },
+  "e23_dimensions_reference": {
+    "discrimination": {
+      "lifecycle_stage": "Design / conceptual soundness; ongoing outcomes analysis",
+      "expectation": "The model meaningfully separates fraud from non-fraud and that separation is demonstrated, not assumed.",
+      "evidence_metrics": [
+        "auc",
+        "ks"
+      ]
+    },
+    "calibration": {
+      "lifecycle_stage": "Conceptual soundness",
+      "expectation": "Predicted fraud probabilities correspond to observed frequencies, so scores can support consistent decisioning.",
+      "evidence_metrics": [
+        "brier",
+        "ece"
+      ]
+    },
+    "stability": {
+      "lifecycle_stage": "Ongoing monitoring",
+      "expectation": "Input/score distributions are monitored for drift, with thresholds that trigger investigation or revalidation.",
+      "evidence_metrics": [
+        "psi"
+      ]
+    },
+    "fairness": {
+      "lifecycle_stage": "Conceptual soundness; ongoing monitoring",
+      "expectation": "Adverse outcomes (fraud flags) do not fall disproportionately on protected groups without justification.",
+      "evidence_metrics": [
+        "adverse_impact_ratio",
+        "equal_opportunity_gap",
+        "demographic_parity_gap"
+      ]
+    },
+    "explainability": {
+      "lifecycle_stage": "Conceptual soundness; deployment",
+      "expectation": "Individual decisions can be explained in terms a validator and an adversely-affected customer could follow.",
+      "evidence_metrics": [
+        "explanation_coverage"
+      ]
+    },
+    "stability_of_concept_under_adversary": {
+      "lifecycle_stage": "Ongoing monitoring (fraud-specific)",
+      "expectation": "Because fraud is adversarial and non-stationary, performance degradation between reference and recent data is surfaced explicitly.",
+      "evidence_metrics": [
+        "psi",
+        "auc_delta_vs_reference"
+      ]
+    }
+  },
+  "thresholds": {
+    "auc_min": 0.75,
+    "ks_min": 0.3,
+    "ece_max": 0.1,
+    "psi_warn": 0.1,
+    "psi_fail": 0.25,
+    "air_min": 0.8,
+    "eo_gap_max": 0.1,
+    "explanation_coverage_min": 0.95
+  },
+  "overall_status": "FAIL",
+  "disclaimer": "Decision-support only; not regulatory advice. Validate against the official OSFI E-23 text and institutional policy."
+}
