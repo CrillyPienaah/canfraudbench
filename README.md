@@ -1,84 +1,155 @@
-# CanFraudBench
+# CanFraudBench — Canadian Identity-Fraud Benchmark with OSFI E-23 Governance Mapping
 
-**A public, reproducible benchmark and evaluation protocol for identity-fraud detection in a Canadian financial-onboarding context — with every metric mapped to OSFI Guideline E-23 model-risk expectations.**
+> **Core finding:** The reference baseline scores **AUC 0.969** and is classified **🚫 BLOCKED**
+> under OSFI E-23 governance criteria — its Adverse Impact Ratio (0.59) breaches the
+> four-fifths fairness rule. Discrimination without governance is not a passing model.
 
-CanFraudBench is not another detection model. It is the *measuring stick*: a
-standardized way to evaluate how well a synthetic-identity or document-fraud
-model performs, **and** whether the evidence it produces would satisfy a Canadian
-model-risk validator under OSFI Guideline E-23 (effective 1 May 2027).
+A public, reproducible benchmark for synthetic-identity fraud detection in a Canadian
+financial-onboarding context — where every metric maps to OSFI Guideline E-23 model-risk expectations.
 
-It exists because there is, today, **no public Canadian benchmark** for
-identity-fraud detection. The strong open corpora that do exist
-(MIDV-2020, SIDTD, DLC-2021, FMIDV, IDNet) are all US- and Europe-based, and
-none of them is framed against Canadian regulatory expectations.
-
----
-
-## The two tracks
-
-| Track | Question it answers | Data basis |
-|---|---|---|
-| **Track A — Synthetic Identity** | Can a model flag blended / fabricated ("Frankenstein") identities at onboarding? | High-fidelity **synthetic** PII generated from documented Canadian synthetic-ID typologies, with a stated differential-privacy guarantee. Fully publishable; contains no real person's data. |
-| **Track B — Document & Presentation Attack** | Can a model flag forged or AI-manipulated ID documents and liveness spoofs? | A standardized harness over **existing, research-licensed public datasets** (MIDV-2020 / SIDTD / DLC-2021 / IDNet), re-contextualized for Canadian document types. We redistribute **no** source images; we provide loaders, splits, and the evaluation protocol. |
-
-> **Why not "real" Canadian customer data?** Real Canadian identity data
-> (names, SINs, passport/licence images, biometrics) is the most regulated
-> category of data under PIPEDA and cannot be lawfully published by an
-> individual. Every credible public dataset in this field is therefore
-> synthetic-by-design *or* research-licensed. CanFraudBench follows the same
-> principle: realism without exposing a single real identity. See
-> [`docs/DATA_ETHICS.md`](docs/DATA_ETHICS.md).
+[![Dataset](https://img.shields.io/badge/HuggingFace-Dataset-yellow)](https://huggingface.co/datasets/CrillyPienaah/CanFraudBench)
+[![License: CC BY 4.0](https://img.shields.io/badge/License-CC%20BY%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by/4.0/)
+[![License: Apache 2.0](https://img.shields.io/badge/Code-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
 ---
 
-## What makes it a *governance* benchmark
+## Reference Baseline Evidence Pack
 
-Every score CanFraudBench reports is paired with the E-23 expectation it speaks
-to. A submission produces not just an AUC, but a **validation evidence pack**:
-discrimination, calibration, stability/drift, fairness across demographic
-slices, and explainability coverage — the dimensions an independent validator
-must check. See [`canfraudbench/governance/e23_mapping.py`](canfraudbench/governance/e23_mapping.py).
+| E-23 Dimension | Metric | Score | Status |
+|----------------|--------|-------|--------|
+| Discrimination | AUC | 0.969 | ✅ PASS |
+| Calibration | Brier Score | 0.048 | ✅ PASS |
+| Fairness | AIR (four-fifths rule) | 0.59 | ❌ FAIL |
+| Stability | PSI (holdout) | 0.031 | ✅ PASS |
+| Explainability | Top-3 SHAP features documented | Yes | ✅ PASS |
+| **Overall E-23 Status** | | | **🚫 BLOCKED** |
+
+Rankings sort by E-23 status first, then mean per-typology recall, then AUC.
+A high-AUC model that fails a governance dimension does not outrank a governable one.
 
 ---
 
-## Quick start
+## Quick Start
 
 ```bash
-pip install -e .
-# Track A: generate the synthetic-identity benchmark set (reproducible seed)
-python -m canfraudbench.synthid.generate --n 20000 --seed 23 --out data/synthid/
-
-# Run the reference baseline and produce a full E-23 evidence pack
-python baselines/baseline_synthid.py --data data/synthid/ --report out/evidence_pack.json
+git clone https://github.com/CrillyPienaah/canfraudbench
+cd canfraudbench
+pip install -r requirements.txt
 ```
 
-## Submitting to the leaderboard
+**Load the dataset:**
+```python
+import json, urllib.request
 
-CanFraudBench is **submission-by-protocol**: you run the evaluation harness on
-your own model and submit the produced `evidence_pack.json` (predictions +
-metrics, never raw data). See [`leaderboard/HOW_TO_SUBMIT.md`](leaderboard/HOW_TO_SUBMIT.md).
+URL = "https://huggingface.co/datasets/CrillyPienaah/CanFraudBench/resolve/main/canfraudbench_synthid_n20000_seed23.jsonl"
+records = [json.loads(l) for l in urllib.request.urlopen(URL)]
+X = [list(r["features"].values()) for r in records]
+y = [r["label"] for r in records]
+groups = [r["protected_group"] for r in records]
+```
 
-## Status
+**Reproduce the dataset from scratch:**
+```bash
+python -m canfraudbench.synthid.generate --n 20000 --seed 23 --out data/synthid/
+```
 
-Both tracks are **live**:
+**Run the reference baseline + evidence pack:**
+```bash
+python -m canfraudbench.evaluate --data data/synthid/ --model baseline
+```
 
-- **Track A** (synthetic identity): generator, metrics, governance mapping, and
-  a calibrated reference baseline that runs end to end.
-- **Track B** (document/presentation attack): adapters (SIDTD, MIDV-2020, and a
-  generic manifest adapter for any local dataset) plus an evaluation harness
-  that produces the same E-23 evidence pack, sliced by attack type and document
-  type. Point it at your licensed local copy of the source datasets — images
-  are never rebundled.
+---
 
-The reference scorers are deliberately weak floors; both currently post a high
-AUC yet **fail overall** on a governance dimension (Track A on fairness, Track B
-on calibration), which is the benchmark's entire point.
+## Repository Structure
 
-## License
+```
+canfraudbench/
+├── canfraudbench/
+│   ├── synthid/
+│   │   └── generate.py        # Deterministic synthetic data generator
+│   ├── metrics/
+│   │   └── e23_governance.py  # AUC, AIR, PSI, Brier, SHAP -> E-23 evidence pack
+│   └── evaluate.py            # End-to-end evaluation harness
+├── data/
+│   └── synthid/               # Generated data (gitignored, load from HF)
+├── docs/
+│   └── DATA_ETHICS.md         # Honest scope, privacy guarantees
+├── notebooks/
+│   └── reference_baseline.ipynb  # Reproduces the BLOCKED verdict
+├── requirements.txt
+└── README.md
+```
 
-Code: Apache-2.0. Generated Track-A data: CC BY 4.0. Track-B source datasets
-remain under their respective original licenses.
+---
+
+## Why This Exists
+
+OSFI Guideline E-23 (Model Risk Management) takes effect **1 May 2027** and applies to all
+models at all federally regulated financial institutions, including AI/ML and third-party models.
+Yet there is no public Canadian benchmark for identity-fraud detection — the strong open corpora
+that exist (MIDV-2020, SIDTD, IDNet) are all US/European and none is framed against Canadian
+regulatory expectations.
+
+CanFraudBench fills that gap. Every score is paired with the E-23 evidence dimension it speaks
+to (discrimination, calibration, stability/drift, fairness, explainability). A submission
+produces a **validation evidence pack**, not just an AUC.
+
+---
+
+## Dataset — Track A (Synthetic Identity)
+
+| Property | Value |
+|----------|-------|
+| Records | 20,000 |
+| Legitimate | 16,000 |
+| Fraud | 4,000 (20%) |
+| Seed | 23 (deterministic) |
+| Format | JSON Lines (.jsonl) |
+
+**Fraud typology breakdown:**
+
+| Typology | Count | Description |
+|----------|-------|-------------|
+| fabricated | 1,200 | Wholly invented identity |
+| blended | 1,200 | Real structural identifier + fabricated name/DOB |
+| file_aged | 800 | Thin file artificially aged |
+| linked_cluster | 600 | Application cluster (device/address reuse) |
+| inconsistent | 200 | Internally contradictory fields |
+| legitimate | 16,000 | Internally consistent applicant |
+
+---
+
+## Submitting to the Leaderboard
+
+Submit the produced evidence pack (metrics, never raw data). Rankings sort by E-23 status
+first, then mean per-typology recall, then AUC. See `docs/SUBMISSION.md` for the full protocol.
+
+---
+
+## Privacy & Ethics
+
+- **Fully synthetic.** No real person's data is present.
+- **No real SINs.** Most records deliberately fail the Luhn checksum.
+- **Honest scope.** Typology-grounded simulator, not a DP mechanism — stated plainly, not overclaimed.
+- **Not affiliated with OSFI.** Decision-support only, not regulatory advice.
+
+See `docs/DATA_ETHICS.md` for full details.
+
+---
 
 ## Citation
 
-See [`CITATION.cff`](CITATION.cff).
+```bibtex
+@misc{canfraudbench2026,
+  title  = {CanFraudBench: A Canadian Identity-Fraud Benchmark with OSFI E-23 Governance Mapping},
+  author = {Pienaah, Christopher},
+  year   = {2026},
+  url    = {https://github.com/CrillyPienaah/canfraudbench}
+}
+```
+
+---
+
+**Author:** Christopher Crilly Pienaah  
+**Portfolio:** [chris-pienaah-portfolio.vercel.app](https://chris-pienaah-portfolio.vercel.app)  
+**LinkedIn:** [linkedin.com/in/christopher-crilly-pienaah](https://linkedin.com/in/christopher-crilly-pienaah)
